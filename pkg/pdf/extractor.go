@@ -12,13 +12,16 @@ func ExtractText(reader io.ReaderAt, size int64) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("open pdf: %w", err)
 	}
+
 	extracted, err := r.GetPlainText()
 	if err != nil {
 		return "", fmt.Errorf("extract pdf text: %w", err)
 	}
+
 	text, err := io.ReadAll(extracted)
 	if err != nil {
 		return "", fmt.Errorf("read extracted pdf text: %w", err)
 	}
+
 	return string(text), nil
 }

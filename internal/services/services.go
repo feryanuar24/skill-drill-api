@@ -23,9 +23,11 @@ func (s *QuestionService) Generate(ctx context.Context, topicID uint, theme stri
 	if count < 1 || count > 100 {
 		return nil, fmt.Errorf("num_questions must be between 1 and 100")
 	}
+
 	if strings.TrimSpace(theme) == "" {
 		return nil, fmt.Errorf("prompt_theme is required")
 	}
+
 	exists, err := s.Repo.TopicExists(ctx, topicID)
 	if err != nil {
 		return nil, err
@@ -33,36 +35,46 @@ func (s *QuestionService) Generate(ctx context.Context, topicID uint, theme stri
 	if !exists {
 		return nil, fmt.Errorf("topic %d not found", topicID)
 	}
-	prompt := fmt.Sprintf("You are an expert question creator. Generate %d random multiple-choice questions with medium to hard difficulty about %s. Return ONLY a valid JSON array with objects containing question_text, option_a, option_b, option_c, option_d, correct_answer (A, B, C, or D), and explanation.", count, theme)
+
+	prompt := fmt.Sprintf("Anda adalah pembuat soal yang ahli. Buat %d soal pilihan ganda acak dengan tingkat kesulitan menengah hingga sulit tentang %s. Tulis seluruh isi soal, pilihan jawaban, dan penjelasan dalam bahasa Indonesia. Kembalikan HANYA array JSON yang valid dengan objek berisi question_text, option_a, option_b, option_c, option_d, correct_answer (A, B, atau C, atau D), dan explanation.", count, theme)
 	if reader != nil {
 		text, err := pdfextractor.ExtractText(reader, size)
 		if err != nil {
 			return nil, err
 		}
-		prompt = fmt.Sprintf("Based on the following text, generate %d multiple-choice questions about %s. Return ONLY a valid JSON array with objects containing question_text, option_a, option_b, option_c, option_d, correct_answer (A, B, C, or D), and explanation.\n\nTEXT:\n%s", count, theme, text)
+
+		prompt = fmt.Sprintf("Berdasarkan teks berikut, buat %d soal pilihan ganda tentang %s. Tulis seluruh isi soal, pilihan jawaban, dan penjelasan dalam bahasa Indonesia. Kembalikan HANYA array JSON yang valid dengan objek berisi question_text, option_a, option_b, option_c, option_d, correct_answer (A, B, atau C, atau D), dan explanation.\n\nTEKS:\n%s", count, theme, text)
 	}
+
 	response, err := s.LLM.Generate(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
+
 	var questions []models.Question
+
 	if err := json.Unmarshal([]byte(response), &questions); err != nil {
 		return nil, fmt.Errorf("parse llm JSON array: %w", err)
 	}
+
 	if len(questions) != count {
 		return nil, fmt.Errorf("llm returned %d questions, expected %d", len(questions), count)
 	}
+
 	for i := range questions {
 		questions[i].ID = 0
 		questions[i].TopicID = topicID
 		questions[i].CreatedAt = time.Time{}
+
 		if !strings.Contains("ABCD", strings.ToUpper(questions[i].CorrectAnswer)) {
 			return nil, fmt.Errorf("invalid correct_answer at index %d", i)
 		}
 	}
+
 	if err := s.Repo.CreateQuestions(ctx, questions); err != nil {
 		return nil, err
 	}
+
 	return questions, nil
 }
 
@@ -76,14 +88,17 @@ func (s *StudyService) Submit(ctx context.Context, userID, topicID, questionID u
 	if !strings.Contains("ABCD", answer) || len(answer) != 1 {
 		return false, nil, fmt.Errorf("answer must be A, B, C, or D")
 	}
+
 	question, err := s.Repo.FindQuestion(ctx, questionID, topicID)
 	if err != nil {
 		return false, nil, err
 	}
+
 	user, err := s.Repo.FindUser(ctx, userID)
 	if err != nil {
 		return false, nil, err
 	}
+
 	now := time.Now().In(s.Location)
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, s.Location)
 	if user.LastStudyDate == nil {
@@ -92,25 +107,31 @@ func (s *StudyService) Submit(ctx context.Context, userID, topicID, questionID u
 		last := user.LastStudyDate.In(s.Location)
 		lastDay := time.Date(last.Year(), last.Month(), last.Day(), 0, 0, 0, 0, s.Location)
 		gap := int(today.Sub(lastDay).Hours() / 24)
+
 		if gap == 1 {
 			user.CurrentStreak++
 		} else if gap > 1 {
 			user.CurrentStreak = 0
 		}
 	}
+
 	if user.CurrentStreak > user.HighestStreak {
 		user.HighestStreak = user.CurrentStreak
 	}
+
 	user.LastStudyDate = &today
 	if err := s.Repo.SaveUser(ctx, user); err != nil {
 		return false, nil, err
 	}
+
 	session := &models.StudySession{UserID: userID, TopicID: topicID, Score: 0, IsCompleted: true}
 	if answer == strings.ToUpper(question.CorrectAnswer) {
 		session.Score = 1
 	}
+
 	if err := s.Repo.CreateSession(ctx, session); err != nil {
 		return false, nil, err
 	}
+
 	return session.Score == 1, user, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -16,17 +17,36 @@ import (
 	"skill-drill-api/pkg/llm"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func main() {
+	// Load env
+	err := godotenv.Load()
+	if err != nil {
+		log.Print("Error loading .env file, using environment variables instead")
+	}
+
+	// Set up loggging
+	logFile, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logFile.Close()
+	logWriter := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(logWriter)
+	gin.DefaultWriter = logWriter
+	gin.DefaultErrorWriter = logWriter
+
+	// Set up database
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
-		getenv("DB_HOST", "localhost"),
-		getenv("DB_USER", "postgres"),
-		getenv("DB_PASSWORD", "password"),
-		getenv("DB_NAME", "skill_drill"),
-		getenv("DB_PORT", "5432"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"),
+		os.Getenv("DB_PORT"),
 	)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -36,31 +56,36 @@ func main() {
 		log.Fatal(err)
 	}
 	repo := repository.New(db)
-	location, err := time.LoadLocation(getenv("TIMEZONE", "UTC"))
+
+	// Set up timezone
+	location, err := time.LoadLocation(os.Getenv("TIMEZONE"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	llmClient := &llm.HTTPClient{URL: getenv("LLM_API_URL", "https://api.deepseek.com/chat/completions"), APIKey: os.Getenv("LLM_API_KEY"), Model: getenv("LLM_MODEL", "deepseek-chat"), HTTP: http.DefaultClient}
+
+	// Set up LLM client
+	llmClient := &llm.HTTPClient{URL: os.Getenv("LLM_API_URL"), APIKey: os.Getenv("LLM_API_KEY"), Model: os.Getenv("LLM_MODEL"), HTTP: http.DefaultClient}
+
+	// Set up API handler
 	handler := &api.Handler{Questions: &services.QuestionService{Repo: repo, LLM: llmClient}, Study: &services.StudyService{Repo: repo, Location: location}}
-	fcmClient, err := fcm.NewClient(getenv("FIREBASE_CREDENTIALS_FILE", "firebase.json"), http.DefaultClient)
+
+	// Set up FCM client
+	fcmClient, err := fcm.NewClient(os.Getenv("FIREBASE_CREDENTIALS_FILE"), http.DefaultClient)
 	if err != nil {
-		log.Printf("FCM disabled: %v", err)
+		log.Fatal(err)
 	}
 	notifier := (&worker.Notifier{Repo: repo, FCM: fcmClient, Location: location}).Start()
 	defer notifier.Stop()
+
+	// Set up Gin router
 	r := gin.Default()
-	r.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
-	r.POST("/admin/generate-questions", handler.GenerateQuestions)
-	r.POST("/study/submit", handler.Submit)
-	log.Printf("API listening on :%s", getenv("PORT", "8080"))
-	if err := r.Run(":" + getenv("PORT", "8080")); err != nil {
+	r.GET("/api/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
+	r.POST("/api/admin/generate-questions", handler.GenerateQuestions)
+	r.POST("/api/study/submit", handler.Submit)
+
+	// Start server
+	log.Printf("API listening on :%s", os.Getenv("PORT"))
+	if err := r.Run(":" + os.Getenv("PORT")); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func getenv(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return fallback
 }

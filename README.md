@@ -26,8 +26,6 @@ REST API backend untuk aplikasi Micro-LMS gamifikasi menggunakan Go, Gin, GORM, 
    go run ./cmd/api
    ```
 
-File `.env` dimuat otomatis saat aplikasi dimulai. Jika file tidak tersedia, aplikasi menggunakan nilai default untuk konfigurasi yang memiliki fallback.
-
 ## Menjalankan dengan Docker
 
 ```bash
@@ -49,6 +47,7 @@ API tersedia di `http://localhost:8080`. PostgreSQL tersedia di port `5432`. Com
 | `LLM_API_URL`               | `https://api.deepseek.com/chat/completions` | URL API LLM                     |
 | `LLM_API_KEY`               | `your-api-key`                              | API key LLM                     |
 | `LLM_MODEL`                 | `deepseek-chat`                             | Model LLM                       |
+| `LOG_FILE`                  | `app.log`                                   | Lokasi file log aplikasi        |
 | `FIREBASE_CREDENTIALS_FILE` | `./firebase.json`                           | Lokasi service account Firebase |
 | `TIMEZONE`                  | `UTC`                                       | Zona waktu streak dan cron      |
 
@@ -58,12 +57,12 @@ Jangan commit `.env` atau `firebase.json` ke repository. Keduanya sudah masuk `.
 
 Base URL default: `http://localhost:8080`
 
-### `GET /health`
+### `GET /api/health`
 
 Memeriksa apakah API aktif.
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:8080/api/health
 ```
 
 Response `200 OK`:
@@ -74,7 +73,7 @@ Response `200 OK`:
 }
 ```
 
-### `POST /admin/generate-questions`
+### `POST /api/admin/generate-questions`
 
 Membuat pertanyaan pilihan ganda menggunakan LLM. Request harus memakai `multipart/form-data`. File PDF bersifat opsional.
 
@@ -90,7 +89,7 @@ Form fields:
 Tanpa PDF:
 
 ```bash
-curl -X POST http://localhost:8080/admin/generate-questions \
+curl -X POST http://localhost:8080/api/admin/generate-questions \
 	-F topic_id=1 \
 	-F prompt_theme="Go concurrency" \
 	-F num_questions=5
@@ -99,7 +98,7 @@ curl -X POST http://localhost:8080/admin/generate-questions \
 Dengan PDF:
 
 ```bash
-curl -X POST http://localhost:8080/admin/generate-questions \
+curl -X POST http://localhost:8080/api/admin/generate-questions \
 	-F topic_id=1 \
 	-F prompt_theme="AWS networking" \
 	-F num_questions=5 \
@@ -129,14 +128,14 @@ Response `201 Created`:
 
 LLM harus mengembalikan JSON array murni. Jumlah item yang berbeda dari `num_questions` akan ditolak dan tidak disimpan.
 
-### `POST /study/submit`
+### `POST /api/study/submit`
 
 Mengirim jawaban untuk sebuah pertanyaan dan memperbarui streak user.
 
 Request:
 
 ```bash
-curl -X POST http://localhost:8080/study/submit \
+curl -X POST http://localhost:8080/api/study/submit \
 	-H 'Content-Type: application/json' \
 	-d '{
 		"user_id": 1,
@@ -194,7 +193,3 @@ go test ./...
 go vet ./...
 docker compose config -q
 ```
-
-## Catatan Keamanan
-
-Endpoint `/admin/generate-questions` belum memiliki autentikasi atau otorisasi admin. Tambahkan authentication middleware sebelum API dipakai di production. Simpan API key LLM dan Firebase service account hanya melalui secret manager atau environment variable yang aman.
