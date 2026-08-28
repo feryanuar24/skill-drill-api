@@ -126,7 +126,6 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*AuthRespons
 func (s *AuthService) ForgotPassword(ctx context.Context, req ForgotPasswordRequest) error {
 	user, err := s.Repo.FindUserByEmail(ctx, req.Email)
 	if err != nil {
-		// Do not leak if email exists or not
 		return nil
 	}
 
@@ -178,7 +177,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, req ResetPasswordReques
 func (s *AuthService) generateToken(userID uint) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "default_secret" // fallback
+		secret = "default_secret"
 	}
 
 	claims := jwt.MapClaims{

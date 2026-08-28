@@ -95,6 +95,7 @@ func main() {
 	r.GET("/api/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 	r.POST("/api/auth/register", handler.Register)
 	r.POST("/api/auth/login", handler.Login)
+	r.POST("/api/auth/logout", handler.Logout)
 	r.GET("/api/auth/verify", handler.VerifyEmail)
 	r.POST("/api/auth/forgot-password", handler.ForgotPassword)
 	r.POST("/api/auth/reset-password", handler.ResetPassword)

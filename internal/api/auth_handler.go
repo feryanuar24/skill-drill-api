@@ -40,7 +40,14 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
+	c.SetCookie("token", res.Token, 3600*72, "/", "", false, true)
+
 	c.JSON(http.StatusOK, res)
+}
+
+func (h *Handler) Logout(c *gin.Context) {
+	c.SetCookie("token", "", -1, "/", "", false, true)
+	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 }
 
 func (h *Handler) VerifyEmail(c *gin.Context) {
