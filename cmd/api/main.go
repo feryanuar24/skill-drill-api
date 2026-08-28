@@ -9,12 +9,14 @@ import (
 	"time"
 
 	"skill-drill-api/internal/api"
+	"skill-drill-api/internal/middleware"
 	"skill-drill-api/internal/models"
 	"skill-drill-api/internal/repository"
 	"skill-drill-api/internal/services"
 	"skill-drill-api/internal/worker"
 	"skill-drill-api/pkg/fcm"
 	"skill-drill-api/pkg/llm"
+	"skill-drill-api/pkg/mailer"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -66,12 +68,16 @@ func main() {
 	// Set up LLM client
 	llmClient := &llm.HTTPClient{URL: os.Getenv("LLM_API_URL"), APIKey: os.Getenv("LLM_API_KEY"), Model: os.Getenv("LLM_MODEL"), HTTP: http.DefaultClient}
 
+	// Set up Mailer
+	appMailer := mailer.NewMailer()
+
 	// Set up API handler
 	handler := &api.Handler{
 		Questions: &services.QuestionService{Repo: repo, LLM: llmClient},
 		Study:     &services.StudyService{Repo: repo, Location: location},
 		Users:     &services.UserService{Repo: repo},
 		Topics:    &services.TopicService{Repo: repo},
+		Auth:      &services.AuthService{Repo: repo, Mailer: appMailer},
 	}
 
 	// Set up FCM client
@@ -84,23 +90,35 @@ func main() {
 
 	// Set up Gin router
 	r := gin.Default()
+
+	// Public routes
 	r.GET("/api/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
-	r.POST("/api/admin/generate-questions", handler.GenerateQuestions)
-	r.POST("/api/study/submit", handler.Submit)
+	r.POST("/api/auth/register", handler.Register)
+	r.POST("/api/auth/login", handler.Login)
+	r.GET("/api/auth/verify", handler.VerifyEmail)
+	r.POST("/api/auth/forgot-password", handler.ForgotPassword)
+	r.POST("/api/auth/reset-password", handler.ResetPassword)
+
+	// Protected routes
+	protected := r.Group("/api")
+	protected.Use(middleware.AuthMiddleware())
+
+	protected.POST("/admin/generate-questions", handler.GenerateQuestions)
+	protected.POST("/study/submit", handler.Submit)
 
 	// User routes
-	r.POST("/api/users", handler.CreateUser)
-	r.GET("/api/users", handler.GetUsers)
-	r.GET("/api/users/:id", handler.GetUserByID)
-	r.PUT("/api/users/:id", handler.UpdateUser)
-	r.DELETE("/api/users/:id", handler.DeleteUser)
+	protected.POST("/users", handler.CreateUser)
+	protected.GET("/users", handler.GetUsers)
+	protected.GET("/users/:id", handler.GetUserByID)
+	protected.PUT("/users/:id", handler.UpdateUser)
+	protected.DELETE("/users/:id", handler.DeleteUser)
 
 	// Topic routes
-	r.POST("/api/topics", handler.CreateTopic)
-	r.GET("/api/topics", handler.GetTopics)
-	r.GET("/api/topics/:id", handler.GetTopicByID)
-	r.PUT("/api/topics/:id", handler.UpdateTopic)
-	r.DELETE("/api/topics/:id", handler.DeleteTopic)
+	protected.POST("/topics", handler.CreateTopic)
+	protected.GET("/topics", handler.GetTopics)
+	protected.GET("/topics/:id", handler.GetTopicByID)
+	protected.PUT("/topics/:id", handler.UpdateTopic)
+	protected.DELETE("/topics/:id", handler.DeleteTopic)
 
 	// Start server
 	log.Printf("API listening on :%s", os.Getenv("PORT"))
