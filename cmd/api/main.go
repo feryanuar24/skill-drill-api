@@ -67,7 +67,12 @@ func main() {
 	llmClient := &llm.HTTPClient{URL: os.Getenv("LLM_API_URL"), APIKey: os.Getenv("LLM_API_KEY"), Model: os.Getenv("LLM_MODEL"), HTTP: http.DefaultClient}
 
 	// Set up API handler
-	handler := &api.Handler{Questions: &services.QuestionService{Repo: repo, LLM: llmClient}, Study: &services.StudyService{Repo: repo, Location: location}}
+	handler := &api.Handler{
+		Questions: &services.QuestionService{Repo: repo, LLM: llmClient},
+		Study:     &services.StudyService{Repo: repo, Location: location},
+		Users:     &services.UserService{Repo: repo},
+		Topics:    &services.TopicService{Repo: repo},
+	}
 
 	// Set up FCM client
 	fcmClient, err := fcm.NewClient(os.Getenv("FIREBASE_CREDENTIALS_FILE"), http.DefaultClient)
@@ -82,6 +87,20 @@ func main() {
 	r.GET("/api/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 	r.POST("/api/admin/generate-questions", handler.GenerateQuestions)
 	r.POST("/api/study/submit", handler.Submit)
+
+	// User routes
+	r.POST("/api/users", handler.CreateUser)
+	r.GET("/api/users", handler.GetUsers)
+	r.GET("/api/users/:id", handler.GetUserByID)
+	r.PUT("/api/users/:id", handler.UpdateUser)
+	r.DELETE("/api/users/:id", handler.DeleteUser)
+
+	// Topic routes
+	r.POST("/api/topics", handler.CreateTopic)
+	r.GET("/api/topics", handler.GetTopics)
+	r.GET("/api/topics/:id", handler.GetTopicByID)
+	r.PUT("/api/topics/:id", handler.UpdateTopic)
+	r.DELETE("/api/topics/:id", handler.DeleteTopic)
 
 	// Start server
 	log.Printf("API listening on :%s", os.Getenv("PORT"))

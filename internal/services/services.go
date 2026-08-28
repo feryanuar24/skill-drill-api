@@ -135,3 +135,106 @@ func (s *StudyService) Submit(ctx context.Context, userID, topicID, questionID u
 
 	return session.Score == 1, user, nil
 }
+
+type UserService struct {
+	Repo *repository.Repository
+}
+
+func (s *UserService) Create(ctx context.Context, user *models.User) error {
+	user.Username = strings.TrimSpace(user.Username)
+	user.Email = strings.TrimSpace(user.Email)
+	if user.Username == "" {
+		return fmt.Errorf("username is required")
+	}
+	if user.Email == "" {
+		return fmt.Errorf("email is required")
+	}
+	return s.Repo.CreateUser(ctx, user)
+}
+
+func (s *UserService) GetAll(ctx context.Context) ([]models.User, error) {
+	return s.Repo.GetUsers(ctx)
+}
+
+func (s *UserService) GetByID(ctx context.Context, id uint) (*models.User, error) {
+	return s.Repo.GetUserByID(ctx, id)
+}
+
+func (s *UserService) Update(ctx context.Context, id uint, req *models.User) (*models.User, error) {
+	user, err := s.Repo.GetUserByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Username = strings.TrimSpace(req.Username)
+	req.Email = strings.TrimSpace(req.Email)
+
+	if req.Username != "" {
+		user.Username = req.Username
+	}
+	if req.Email != "" {
+		user.Email = req.Email
+	}
+	if req.FCMToken != nil {
+		user.FCMToken = req.FCMToken
+	}
+
+	if err := s.Repo.UpdateUser(ctx, user); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (s *UserService) Delete(ctx context.Context, id uint) error {
+	_, err := s.Repo.GetUserByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	return s.Repo.DeleteUser(ctx, id)
+}
+
+type TopicService struct {
+	Repo *repository.Repository
+}
+
+func (s *TopicService) Create(ctx context.Context, topic *models.Topic) error {
+	topic.Name = strings.TrimSpace(topic.Name)
+	if topic.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	return s.Repo.CreateTopic(ctx, topic)
+}
+
+func (s *TopicService) GetAll(ctx context.Context) ([]models.Topic, error) {
+	return s.Repo.GetTopics(ctx)
+}
+
+func (s *TopicService) GetByID(ctx context.Context, id uint) (*models.Topic, error) {
+	return s.Repo.GetTopicByID(ctx, id)
+}
+
+func (s *TopicService) Update(ctx context.Context, id uint, req *models.Topic) (*models.Topic, error) {
+	topic, err := s.Repo.GetTopicByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name != "" {
+		topic.Name = req.Name
+	}
+	topic.Description = req.Description
+
+	if err := s.Repo.UpdateTopic(ctx, topic); err != nil {
+		return nil, err
+	}
+	return topic, nil
+}
+
+func (s *TopicService) Delete(ctx context.Context, id uint) error {
+	_, err := s.Repo.GetTopicByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	return s.Repo.DeleteTopic(ctx, id)
+}
