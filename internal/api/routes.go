@@ -10,18 +10,21 @@ import (
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	// Public routes
 	r.GET("/api/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
-	r.POST("/api/auth/register", h.Register)
-	r.POST("/api/auth/login", h.Login)
+	r.POST("/api/auth/register", middleware.RecaptchaMiddleware(), h.Register)
+	r.POST("/api/auth/login", middleware.RecaptchaMiddleware(), h.Login)
 	r.POST("/api/auth/logout", h.Logout)
 	r.GET("/api/auth/verify", h.VerifyEmail)
-	r.POST("/api/auth/forgot-password", h.ForgotPassword)
-	r.POST("/api/auth/reset-password", h.ResetPassword)
+	r.POST("/api/auth/forgot-password", middleware.RecaptchaMiddleware(), h.ForgotPassword)
+	r.POST("/api/auth/reset-password", middleware.RecaptchaMiddleware(), h.ResetPassword)
 
 	// Protected routes
 	protected := r.Group("/api")
 	protected.Use(middleware.AuthMiddleware())
 
+	// Admin routes
 	protected.POST("/admin/generate-questions", h.GenerateQuestions)
+
+	// Study routes
 	protected.POST("/study/submit", h.Submit)
 
 	// User routes
