@@ -8,21 +8,25 @@ import (
 )
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
+	// Initialize rate limiters
+	authLimiter := middleware.AuthRateLimiter()
+	genLimiter := middleware.GenQuestionsRateLimiter()
+
 	// Public routes
 	r.GET("/api/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
-	r.POST("/api/auth/register", middleware.RecaptchaMiddleware(), h.Register)
-	r.POST("/api/auth/login", middleware.RecaptchaMiddleware(), h.Login)
+	r.POST("/api/auth/register", authLimiter, middleware.RecaptchaMiddleware(), h.Register)
+	r.POST("/api/auth/login", authLimiter, middleware.RecaptchaMiddleware(), h.Login)
 	r.POST("/api/auth/logout", h.Logout)
 	r.GET("/api/auth/verify", h.VerifyEmail)
-	r.POST("/api/auth/forgot-password", middleware.RecaptchaMiddleware(), h.ForgotPassword)
-	r.POST("/api/auth/reset-password", middleware.RecaptchaMiddleware(), h.ResetPassword)
+	r.POST("/api/auth/forgot-password", authLimiter, middleware.RecaptchaMiddleware(), h.ForgotPassword)
+	r.POST("/api/auth/reset-password", authLimiter, middleware.RecaptchaMiddleware(), h.ResetPassword)
 
 	// Protected routes
 	protected := r.Group("/api")
 	protected.Use(middleware.AuthMiddleware())
 
 	// Admin routes
-	protected.POST("/admin/generate-questions", h.GenerateQuestions)
+	protected.POST("/admin/generate-questions", genLimiter, h.GenerateQuestions)
 
 	// Study routes
 	protected.POST("/study/submit", h.Submit)
