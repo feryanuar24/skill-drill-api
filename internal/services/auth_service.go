@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -80,7 +81,9 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 	go func() {
 		subject := "Verify your Email for Skill Drill API"
 		body := fmt.Sprintf("Hi %s,\n\nPlease verify your email by using this token: %s", user.Username, tokenStr)
-		_ = s.Mailer.SendEmail(user.Email, subject, body)
+		if err := s.Mailer.SendEmail(user.Email, subject, body); err != nil {
+			log.Printf("failed to send verification email to %s: %v", user.Email, err)
+		}
 	}()
 
 	return &AuthResponse{User: user}, nil
