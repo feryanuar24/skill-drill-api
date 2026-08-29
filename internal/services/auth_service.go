@@ -25,7 +25,7 @@ type AuthService struct {
 type RegisterRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=50"`
 	Email    string `json:"email" binding:"required,email,max=255"`
-	Password string `json:"password" binding:"required,min=6,max=100"`
+	Password string `json:"password" binding:"required,password,max=100"`
 }
 
 type LoginRequest struct {
@@ -39,7 +39,7 @@ type ForgotPasswordRequest struct {
 
 type ResetPasswordRequest struct {
 	Token    string `json:"token" binding:"required"`
-	Password string `json:"password" binding:"required,min=6,max=100"`
+	Password string `json:"password" binding:"required,password,max=100"`
 }
 
 type AuthResponse struct {

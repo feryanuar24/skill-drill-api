@@ -4,9 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 
+	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
+
+func init() {
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		_ = v.RegisterValidation("password", validatePassword)
+	}
+}
 
 func FormatValidationError(err error) map[string][]string {
 	var ve validator.ValidationErrors
@@ -26,6 +34,8 @@ func FormatValidationError(err error) map[string][]string {
 				msg = fmt.Sprintf("%s must not exceed %s", field, fe.Param())
 			case "oneof":
 				msg = fmt.Sprintf("%s must be one of: %s", field, strings.Join(strings.Fields(fe.Param()), ", "))
+			case "password":
+				msg = fmt.Sprintf("%s must be at least 8 characters long and contain a combination of uppercase letters, lowercase letters, numbers, and symbols", field)
 			default:
 				msg = fmt.Sprintf("%s failed validation on %s", field, fe.Tag())
 			}
@@ -48,4 +58,30 @@ func toSnakeCase(str string) string {
 		result.WriteRune(r)
 	}
 	return strings.ToLower(result.String())
+}
+
+func validatePassword(fl validator.FieldLevel) bool {
+	password := fl.Field().String()
+	if len(password) < 8 {
+		return false
+	}
+	var (
+		hasUpper  bool
+		hasLower  bool
+		hasNumber bool
+		hasSymbol bool
+	)
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsDigit(char):
+			hasNumber = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSymbol = true
+		}
+	}
+	return hasUpper && hasLower && hasNumber && hasSymbol
 }
