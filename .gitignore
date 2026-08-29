@@ -1,3 +1,4 @@
 .env
 firebase.json
 *.log
+api

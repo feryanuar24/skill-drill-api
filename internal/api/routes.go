@@ -13,7 +13,9 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	genLimiter := middleware.GenQuestionsRateLimiter()
 
 	// Public routes
-	r.GET("/api/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
+	r.GET("/api/health", func(c *gin.Context) {
+		SendSuccess(c, http.StatusOK, "API is running", nil)
+	})
 	r.POST("/api/auth/register", authLimiter, middleware.RecaptchaMiddleware(), h.Register)
 	r.POST("/api/auth/login", authLimiter, middleware.RecaptchaMiddleware(), h.Login)
 	r.POST("/api/auth/logout", h.Logout)

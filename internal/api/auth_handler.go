@@ -13,85 +13,85 @@ import (
 func (h *Handler) Register(c *gin.Context) {
 	var req services.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, FormatValidationError(err))
+		SendError(c, http.StatusBadRequest, "Validation failed", FormatValidationError(err))
 		return
 	}
 
 	res, err := h.Auth.Register(c.Request.Context(), req)
 	if err != nil {
 		log.Print(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, res)
+	SendSuccess(c, http.StatusCreated, "User registered successfully", res)
 }
 
 func (h *Handler) Login(c *gin.Context) {
 	var req services.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, FormatValidationError(err))
+		SendError(c, http.StatusBadRequest, "Validation failed", FormatValidationError(err))
 		return
 	}
 
 	res, err := h.Auth.Login(c.Request.Context(), req)
 	if err != nil {
 		log.Print(err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		SendError(c, http.StatusUnauthorized, err.Error(), nil)
 		return
 	}
 
 	c.SetCookie("token", res.Token, 3600*72, "/", "", false, true)
 
-	c.JSON(http.StatusOK, res)
+	SendSuccess(c, http.StatusOK, "Login successful", res)
 }
 
 func (h *Handler) Logout(c *gin.Context) {
 	c.SetCookie("token", "", -1, "/", "", false, true)
-	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+	SendSuccess(c, http.StatusOK, "Logged out successfully", nil)
 }
 
 func (h *Handler) VerifyEmail(c *gin.Context) {
 	token := strings.TrimSpace(c.Query("token"))
 	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
+		SendError(c, http.StatusBadRequest, "Verification token is required", nil)
 		return
 	}
 
 	if err := h.Auth.VerifyEmail(c.Request.Context(), token); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "email verified successfully"})
+	SendSuccess(c, http.StatusOK, "Email verified successfully", nil)
 }
 
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req services.ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, FormatValidationError(err))
+		SendError(c, http.StatusBadRequest, "Validation failed", FormatValidationError(err))
 		return
 	}
 
 	if err := h.Auth.ForgotPassword(c.Request.Context(), req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process request"})
+		SendError(c, http.StatusInternalServerError, "Failed to process request", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "if the email exists, a reset link has been sent"})
+	SendSuccess(c, http.StatusOK, "If the email exists, a reset link has been sent", nil)
 }
 
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req services.ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, FormatValidationError(err))
+		SendError(c, http.StatusBadRequest, "Validation failed", FormatValidationError(err))
 		return
 	}
 
 	if err := h.Auth.ResetPassword(c.Request.Context(), req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "password reset successfully"})
+	SendSuccess(c, http.StatusOK, "Password reset successfully", nil)
 }

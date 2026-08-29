@@ -5,38 +5,38 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
-func FormatValidationError(err error) gin.H {
+func FormatValidationError(err error) map[string][]string {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
-		errorMessages := make([]string, 0, len(ve))
+		errorMessages := make(map[string][]string)
 		for _, fe := range ve {
 			field := toSnakeCase(fe.Field())
+			var msg string
 			switch fe.Tag() {
 			case "required":
-				errorMessages = append(errorMessages, fmt.Sprintf("%s is required", field))
+				msg = fmt.Sprintf("%s is required", field)
 			case "email":
-				errorMessages = append(errorMessages, fmt.Sprintf("%s must be a valid email address", field))
+				msg = fmt.Sprintf("%s must be a valid email address", field)
 			case "min":
-				errorMessages = append(errorMessages, fmt.Sprintf("%s must be at least %s", field, fe.Param()))
+				msg = fmt.Sprintf("%s must be at least %s", field, fe.Param())
 			case "max":
-				errorMessages = append(errorMessages, fmt.Sprintf("%s must not exceed %s", field, fe.Param()))
+				msg = fmt.Sprintf("%s must not exceed %s", field, fe.Param())
 			case "oneof":
-				errorMessages = append(errorMessages, fmt.Sprintf("%s must be one of: %s", field, strings.Join(strings.Fields(fe.Param()), ", ")))
+				msg = fmt.Sprintf("%s must be one of: %s", field, strings.Join(strings.Fields(fe.Param()), ", "))
 			default:
-				errorMessages = append(errorMessages, fmt.Sprintf("%s failed validation on %s", field, fe.Tag()))
+				msg = fmt.Sprintf("%s failed validation on %s", field, fe.Tag())
 			}
+			errorMessages[field] = append(errorMessages[field], msg)
 		}
-		return gin.H{
-			"error":   strings.Join(errorMessages, "; "),
-			"details": errorMessages,
-		}
+		return errorMessages
 	}
 
-	return gin.H{"error": err.Error()}
+	return map[string][]string{
+		"error": {err.Error()},
+	}
 }
 
 func toSnakeCase(str string) string {

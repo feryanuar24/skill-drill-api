@@ -37,7 +37,10 @@ func RecaptchaMiddleware() gin.HandlerFunc {
 
 		secret := os.Getenv("RECAPTCHA_SECRET")
 		if secret == "" {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "reCAPTCHA configuration error: secret is missing"})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "reCAPTCHA configuration error: secret is missing",
+			})
 			return
 		}
 
@@ -47,7 +50,10 @@ func RecaptchaMiddleware() gin.HandlerFunc {
 		}
 
 		if token == "" {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "reCAPTCHA token is required"})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "reCAPTCHA token is required",
+			})
 			return
 		}
 
@@ -57,21 +63,28 @@ func RecaptchaMiddleware() gin.HandlerFunc {
 			"remoteip": {c.ClientIP()},
 		})
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to contact reCAPTCHA verification service"})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "failed to contact reCAPTCHA verification service",
+			})
 			return
 		}
 		defer resp.Body.Close()
 
 		var result RecaptchaResponse
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to decode reCAPTCHA response"})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "failed to decode reCAPTCHA response",
+			})
 			return
 		}
 
 		if !result.Success {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error":       "reCAPTCHA verification failed",
-				"error_codes": result.ErrorCodes,
+				"success": false,
+				"message": "reCAPTCHA verification failed",
+				"errors":  result.ErrorCodes,
 			})
 			return
 		}
@@ -81,7 +94,8 @@ func RecaptchaMiddleware() gin.HandlerFunc {
 			if err == nil {
 				if result.Score < minScore {
 					c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-						"error": fmt.Sprintf("reCAPTCHA score %.2f is below the minimum threshold of %.2f", result.Score, minScore),
+						"success": false,
+						"message": fmt.Sprintf("reCAPTCHA score %.2f is below the minimum threshold of %.2f", result.Score, minScore),
 					})
 					return
 				}

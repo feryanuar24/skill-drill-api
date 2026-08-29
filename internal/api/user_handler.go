@@ -12,68 +12,68 @@ import (
 func (h *Handler) CreateUser(c *gin.Context) {
 	var req services.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, FormatValidationError(err))
+		SendError(c, http.StatusBadRequest, "Validation failed", FormatValidationError(err))
 		return
 	}
 	user, err := h.Users.Create(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusCreated, user)
+	SendSuccess(c, http.StatusCreated, "User created successfully", user)
 }
 
 func (h *Handler) GetUsers(c *gin.Context) {
 	users, err := h.Users.GetAll(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		SendError(c, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, users)
+	SendSuccess(c, http.StatusOK, "Users retrieved successfully", users)
 }
 
 func (h *Handler) GetUserByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		SendError(c, http.StatusBadRequest, "Invalid user ID", nil)
 		return
 	}
 	user, err := h.Users.GetByID(c.Request.Context(), uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		SendError(c, http.StatusNotFound, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	SendSuccess(c, http.StatusOK, "User retrieved successfully", user)
 }
 
 func (h *Handler) UpdateUser(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		SendError(c, http.StatusBadRequest, "Invalid user ID", nil)
 		return
 	}
 	var req services.UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, FormatValidationError(err))
+		SendError(c, http.StatusBadRequest, "Validation failed", FormatValidationError(err))
 		return
 	}
 	updatedUser, err := h.Users.Update(c.Request.Context(), uint(id), &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, updatedUser)
+	SendSuccess(c, http.StatusOK, "User updated successfully", updatedUser)
 }
 
 func (h *Handler) DeleteUser(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		SendError(c, http.StatusBadRequest, "Invalid user ID", nil)
 		return
 	}
 	if err := h.Users.Delete(c.Request.Context(), uint(id)); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "user deleted successfully"})
+	SendSuccess(c, http.StatusOK, "User deleted successfully", nil)
 }

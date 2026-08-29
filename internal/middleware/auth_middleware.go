@@ -16,13 +16,19 @@ func AuthMiddleware() gin.HandlerFunc {
 		if err != nil || tokenString == "" {
 			authHeader := c.GetHeader("Authorization")
 			if authHeader == "" {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization token or header required"})
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"success": false,
+					"message": "Authorization token or header required",
+				})
 				return
 			}
 
 			parts := strings.Split(authHeader, " ")
 			if len(parts) != 2 || parts[0] != "Bearer" {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header must be Bearer token"})
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"success": false,
+					"message": "Authorization header must be Bearer token",
+				})
 				return
 			}
 			tokenString = parts[1]
@@ -41,7 +47,10 @@ func AuthMiddleware() gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": "Invalid token",
+			})
 			return
 		}
 

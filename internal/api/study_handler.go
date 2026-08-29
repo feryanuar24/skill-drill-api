@@ -12,18 +12,18 @@ import (
 func (h *Handler) Submit(c *gin.Context) {
 	var req services.SubmitAnswerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, FormatValidationError(err))
+		SendError(c, http.StatusBadRequest, "Validation failed", FormatValidationError(err))
 		return
 	}
 
 	correct, user, err := h.Study.Submit(c.Request.Context(), req.UserID, req.TopicID, req.QuestionID, req.Answer)
 	if err != nil {
 		log.Print(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	SendSuccess(c, http.StatusOK, "Answer submitted successfully", gin.H{
 		"correct":        correct,
 		"current_streak": user.CurrentStreak,
 		"highest_streak": user.HighestStreak,
