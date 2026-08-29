@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"skill-drill-api/internal/middleware"
+	"skill-drill-api/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,22 +29,30 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	protected.Use(middleware.AuthMiddleware())
 
 	// Admin routes
-	protected.POST("/admin/generate-questions", genLimiter, h.GenerateQuestions)
+	admin := protected.Group("")
+	admin.Use(middleware.RoleMiddleware(models.RoleAdmin))
+	{
+		admin.POST("/admin/generate-questions", genLimiter, h.GenerateQuestions)
 
-	// Study routes
-	protected.POST("/study/submit", h.Submit)
+		// User routes
+		admin.POST("/users", h.CreateUser)
+		admin.GET("/users", h.GetUsers)
+		admin.GET("/users/:id", h.GetUserByID)
+		admin.PUT("/users/:id", h.UpdateUser)
+		admin.DELETE("/users/:id", h.DeleteUser)
 
-	// User routes
-	protected.POST("/users", h.CreateUser)
-	protected.GET("/users", h.GetUsers)
-	protected.GET("/users/:id", h.GetUserByID)
-	protected.PUT("/users/:id", h.UpdateUser)
-	protected.DELETE("/users/:id", h.DeleteUser)
+		// Topic routes
+		admin.POST("/topics", h.CreateTopic)
+		admin.GET("/topics", h.GetTopics)
+		admin.GET("/topics/:id", h.GetTopicByID)
+		admin.PUT("/topics/:id", h.UpdateTopic)
+		admin.DELETE("/topics/:id", h.DeleteTopic)
+	}
 
-	// Topic routes
-	protected.POST("/topics", h.CreateTopic)
-	protected.GET("/topics", h.GetTopics)
-	protected.GET("/topics/:id", h.GetTopicByID)
-	protected.PUT("/topics/:id", h.UpdateTopic)
-	protected.DELETE("/topics/:id", h.DeleteTopic)
+	// Study routes (accessible by Student & Admin)
+	student := protected.Group("")
+	student.Use(middleware.RoleMiddleware(models.RoleStudent, models.RoleAdmin))
+	{
+		student.POST("/study/submit", h.Submit)
+	}
 }

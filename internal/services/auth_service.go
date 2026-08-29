@@ -70,6 +70,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 		Username:          req.Username,
 		Email:             req.Email,
 		Password:          string(hashedPassword),
+		Role:              models.RoleStudent,
 		IsVerified:        false,
 		VerificationToken: &tokenStr,
 	}
@@ -118,7 +119,7 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*AuthRespons
 		return nil, errors.New("invalid email or password")
 	}
 
-	token, err := s.generateToken(user.ID)
+	token, err := s.generateToken(user.ID, user.Role)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -177,7 +178,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, req ResetPasswordReques
 	return nil
 }
 
-func (s *AuthService) generateToken(userID uint) (string, error) {
+func (s *AuthService) generateToken(userID uint, role string) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		secret = "default_secret"
@@ -185,6 +186,7 @@ func (s *AuthService) generateToken(userID uint) (string, error) {
 
 	claims := jwt.MapClaims{
 		"user_id": userID,
+		"role":    role,
 		"exp":     time.Now().Add(time.Hour * 72).Unix(),
 	}
 

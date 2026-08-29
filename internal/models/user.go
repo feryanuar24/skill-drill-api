@@ -2,11 +2,17 @@ package models
 
 import "time"
 
+const (
+	RoleAdmin   = "admin"
+	RoleStudent = "student"
+)
+
 type User struct {
 	ID                     uint       `gorm:"primaryKey" json:"id"`
 	Username               string     `gorm:"size:100;not null" json:"username"`
 	Email                  string     `gorm:"size:255;uniqueIndex;not null" json:"email"`
 	Password               string     `gorm:"size:255;not null" json:"-"`
+	Role                   string     `gorm:"size:20;not null;default:'student'" json:"role"`
 	FCMToken               *string    `gorm:"size:500" json:"fcm_token,omitempty"`
 	CurrentStreak          int        `gorm:"not null;default:0" json:"current_streak"`
 	HighestStreak          int        `gorm:"not null;default:0" json:"highest_streak"`

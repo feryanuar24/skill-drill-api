@@ -56,8 +56,45 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			c.Set("user_id", claims["user_id"])
+			if role, exists := claims["role"]; exists {
+				c.Set("role", role)
+			}
 		}
 
 		c.Next()
+	}
+}
+
+func RoleMiddleware(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roleVal, exists := c.Get("role")
+		if !exists {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": "Forbidden: access denied",
+			})
+			return
+		}
+
+		userRole, ok := roleVal.(string)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": "Forbidden: invalid role",
+			})
+			return
+		}
+
+		for _, r := range roles {
+			if userRole == r {
+				c.Next()
+				return
+			}
+		}
+
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "Forbidden: insufficient permissions",
+		})
 	}
 }
