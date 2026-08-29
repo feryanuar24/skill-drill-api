@@ -1,0 +1,32 @@
+# Git & metadata
+.git
+.gitignore
+.github
+
+# Secrets & Environment variables
+.env
+.env.*
+!.env.example
+firebase.json
+*.pem
+*.key
+
+# Local compiled binaries & build artifacts
+/api
+bin/
+dist/
+
+# Logs & temp files
+*.log
+app.log
+tmp/
+
+# Documentation & Markdown
+README.md
+*.md
+
+# Docker related
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
