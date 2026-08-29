@@ -4,17 +4,19 @@ import (
 	"net/http"
 	"strconv"
 
+	"skill-drill-api/internal/services"
+
 	"github.com/gin-gonic/gin"
-	"skill-drill-api/internal/models"
 )
 
 func (h *Handler) CreateTopic(c *gin.Context) {
-	var topic models.Topic
-	if err := c.ShouldBindJSON(&topic); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var req services.CreateTopicRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, FormatValidationError(err))
 		return
 	}
-	if err := h.Topics.Create(c, &topic); err != nil {
+	topic, err := h.Topics.Create(c.Request.Context(), &req)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -22,7 +24,7 @@ func (h *Handler) CreateTopic(c *gin.Context) {
 }
 
 func (h *Handler) GetTopics(c *gin.Context) {
-	topics, err := h.Topics.GetAll(c)
+	topics, err := h.Topics.GetAll(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -32,11 +34,11 @@ func (h *Handler) GetTopics(c *gin.Context) {
 
 func (h *Handler) GetTopicByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
+	if err != nil || id == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid topic id"})
 		return
 	}
-	topic, err := h.Topics.GetByID(c, uint(id))
+	topic, err := h.Topics.GetByID(c.Request.Context(), uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -46,16 +48,16 @@ func (h *Handler) GetTopicByID(c *gin.Context) {
 
 func (h *Handler) UpdateTopic(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
+	if err != nil || id == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid topic id"})
 		return
 	}
-	var req models.Topic
+	var req services.UpdateTopicRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, FormatValidationError(err))
 		return
 	}
-	updatedTopic, err := h.Topics.Update(c, uint(id), &req)
+	updatedTopic, err := h.Topics.Update(c.Request.Context(), uint(id), &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -65,11 +67,11 @@ func (h *Handler) UpdateTopic(c *gin.Context) {
 
 func (h *Handler) DeleteTopic(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
+	if err != nil || id == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid topic id"})
 		return
 	}
-	if err := h.Topics.Delete(c, uint(id)); err != nil {
+	if err := h.Topics.Delete(c.Request.Context(), uint(id)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

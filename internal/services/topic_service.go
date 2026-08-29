@@ -13,12 +13,31 @@ type TopicService struct {
 	Repo *repository.Repository
 }
 
-func (s *TopicService) Create(ctx context.Context, topic *models.Topic) error {
-	topic.Name = strings.TrimSpace(topic.Name)
-	if topic.Name == "" {
-		return fmt.Errorf("name is required")
+type CreateTopicRequest struct {
+	Name        string `json:"name" binding:"required,min=2,max=100"`
+	Description string `json:"description" binding:"max=1000"`
+}
+
+type UpdateTopicRequest struct {
+	Name        string `json:"name" binding:"omitempty,min=2,max=100"`
+	Description string `json:"description" binding:"max=1000"`
+}
+
+func (s *TopicService) Create(ctx context.Context, req *CreateTopicRequest) (*models.Topic, error) {
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return nil, fmt.Errorf("name is required")
 	}
-	return s.Repo.CreateTopic(ctx, topic)
+
+	topic := &models.Topic{
+		Name:        name,
+		Description: strings.TrimSpace(req.Description),
+	}
+
+	if err := s.Repo.CreateTopic(ctx, topic); err != nil {
+		return nil, err
+	}
+	return topic, nil
 }
 
 func (s *TopicService) GetAll(ctx context.Context) ([]models.Topic, error) {
@@ -29,17 +48,19 @@ func (s *TopicService) GetByID(ctx context.Context, id uint) (*models.Topic, err
 	return s.Repo.GetTopicByID(ctx, id)
 }
 
-func (s *TopicService) Update(ctx context.Context, id uint, req *models.Topic) (*models.Topic, error) {
+func (s *TopicService) Update(ctx context.Context, id uint, req *UpdateTopicRequest) (*models.Topic, error) {
 	topic, err := s.Repo.GetTopicByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Name = strings.TrimSpace(req.Name)
-	if req.Name != "" {
-		topic.Name = req.Name
+	name := strings.TrimSpace(req.Name)
+	if name != "" {
+		topic.Name = name
 	}
-	topic.Description = req.Description
+	if req.Description != "" || req.Name != "" {
+		topic.Description = strings.TrimSpace(req.Description)
+	}
 
 	if err := s.Repo.UpdateTopic(ctx, topic); err != nil {
 		return nil, err

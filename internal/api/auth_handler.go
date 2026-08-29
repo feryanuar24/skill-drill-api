@@ -3,6 +3,7 @@ package api
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"skill-drill-api/internal/services"
 
@@ -12,7 +13,7 @@ import (
 func (h *Handler) Register(c *gin.Context) {
 	var req services.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, FormatValidationError(err))
 		return
 	}
 
@@ -29,7 +30,7 @@ func (h *Handler) Register(c *gin.Context) {
 func (h *Handler) Login(c *gin.Context) {
 	var req services.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, FormatValidationError(err))
 		return
 	}
 
@@ -51,7 +52,7 @@ func (h *Handler) Logout(c *gin.Context) {
 }
 
 func (h *Handler) VerifyEmail(c *gin.Context) {
-	token := c.Query("token")
+	token := strings.TrimSpace(c.Query("token"))
 	if token == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
 		return
@@ -68,7 +69,7 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req services.ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, FormatValidationError(err))
 		return
 	}
 
@@ -83,7 +84,7 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req services.ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, FormatValidationError(err))
 		return
 	}
 

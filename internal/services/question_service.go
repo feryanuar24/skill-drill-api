@@ -19,6 +19,12 @@ type QuestionService struct {
 	LLM  llm.Client
 }
 
+type GenerateQuestionsRequest struct {
+	TopicID      uint   `form:"topic_id" binding:"required,min=1"`
+	NumQuestions int    `form:"num_questions" binding:"required,min=1,max=100"`
+	PromptTheme  string `form:"prompt_theme" binding:"required,min=2,max=255"`
+}
+
 func (s *QuestionService) Generate(ctx context.Context, topicID uint, theme string, count int, reader io.ReaderAt, size int64) ([]models.Question, error) {
 	if count < 1 || count > 100 {
 		return nil, fmt.Errorf("num_questions must be between 1 and 100")

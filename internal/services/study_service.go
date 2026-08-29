@@ -15,6 +15,13 @@ type StudyService struct {
 	Location *time.Location
 }
 
+type SubmitAnswerRequest struct {
+	UserID     uint   `json:"user_id" binding:"required,min=1"`
+	TopicID    uint   `json:"topic_id" binding:"required,min=1"`
+	QuestionID uint   `json:"question_id" binding:"required,min=1"`
+	Answer     string `json:"answer" binding:"required,oneof=A B C D a b c d"`
+}
+
 func (s *StudyService) Submit(ctx context.Context, userID, topicID, questionID uint, answer string) (bool, *models.User, error) {
 	answer = strings.ToUpper(strings.TrimSpace(answer))
 	if !strings.Contains("ABCD", answer) || len(answer) != 1 {
