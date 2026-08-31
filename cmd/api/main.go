@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"skill-drill-api/internal/api"
+	"skill-drill-api/internal/middleware"
 	"skill-drill-api/internal/repository"
 	"skill-drill-api/internal/services"
 	"skill-drill-api/internal/worker"
@@ -66,6 +67,7 @@ func main() {
 
 	// Set up Gin router
 	r := gin.Default()
+	r.Use(middleware.CORSMiddleware())
 	handler.RegisterRoutes(r)
 
 	// Start server
