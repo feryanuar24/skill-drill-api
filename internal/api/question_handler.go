@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"skill-drill-api/internal/services"
@@ -70,4 +71,81 @@ func (h *Handler) GenerateQuestions(c *gin.Context) {
 	}
 
 	SendSuccess(c, http.StatusCreated, "Questions generated successfully", gin.H{"questions": questions})
+}
+
+func (h *Handler) CreateQuestion(c *gin.Context) {
+	var req services.CreateQuestionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		SendError(c, http.StatusBadRequest, "Validation failed", FormatValidationError(err))
+		return
+	}
+	question, err := h.Questions.Create(c.Request.Context(), &req)
+	if err != nil {
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+	SendSuccess(c, http.StatusCreated, "Question created successfully", question)
+}
+
+func (h *Handler) GetQuestions(c *gin.Context) {
+	var topicID uint
+	if tIDStr := c.Query("topic_id"); tIDStr != "" {
+		if val, err := strconv.ParseUint(tIDStr, 10, 32); err == nil {
+			topicID = uint(val)
+		}
+	}
+
+	search := c.Query("search")
+	questions, err := h.Questions.GetAll(c.Request.Context(), topicID, search)
+	if err != nil {
+		SendError(c, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+	SendSuccess(c, http.StatusOK, "Questions retrieved successfully", questions)
+}
+
+func (h *Handler) GetQuestionByID(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		SendError(c, http.StatusBadRequest, "Invalid question ID", nil)
+		return
+	}
+	question, err := h.Questions.GetByID(c.Request.Context(), uint(id))
+	if err != nil {
+		SendError(c, http.StatusNotFound, err.Error(), nil)
+		return
+	}
+	SendSuccess(c, http.StatusOK, "Question retrieved successfully", question)
+}
+
+func (h *Handler) UpdateQuestion(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		SendError(c, http.StatusBadRequest, "Invalid question ID", nil)
+		return
+	}
+	var req services.UpdateQuestionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		SendError(c, http.StatusBadRequest, "Validation failed", FormatValidationError(err))
+		return
+	}
+	updatedQuestion, err := h.Questions.Update(c.Request.Context(), uint(id), &req)
+	if err != nil {
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+	SendSuccess(c, http.StatusOK, "Question updated successfully", updatedQuestion)
+}
+
+func (h *Handler) DeleteQuestion(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		SendError(c, http.StatusBadRequest, "Invalid question ID", nil)
+		return
+	}
+	if err := h.Questions.Delete(c.Request.Context(), uint(id)); err != nil {
+		SendError(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+	SendSuccess(c, http.StatusOK, "Question deleted successfully", nil)
 }

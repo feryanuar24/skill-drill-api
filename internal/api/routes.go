@@ -47,6 +47,13 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		admin.GET("/topics/:id", h.GetTopicByID)
 		admin.PUT("/topics/:id", h.UpdateTopic)
 		admin.DELETE("/topics/:id", h.DeleteTopic)
+
+		// Question routes
+		admin.POST("/questions", h.CreateQuestion)
+		admin.GET("/questions", h.GetQuestions)
+		admin.GET("/questions/:id", h.GetQuestionByID)
+		admin.PUT("/questions/:id", h.UpdateQuestion)
+		admin.DELETE("/questions/:id", h.DeleteQuestion)
 	}
 
 	// Study routes (accessible by Student & Admin)
