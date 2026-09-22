@@ -79,15 +79,19 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	go func() {
-		subject := "Verify your Email for Skill Drill API"
-		body := fmt.Sprintf("Hi %s,\n\nPlease verify your email by using this token: %s", user.Username, tokenStr)
-		if err := s.Mailer.SendEmail(user.Email, subject, body); err != nil {
-			log.Printf("failed to send verification email to %s: %v", user.Email, err)
-		}
-	}()
+	s.sendVerificationEmail(user.Username, user.Email, tokenStr)
 
 	return &AuthResponse{User: user}, nil
+}
+
+func (s *AuthService) sendVerificationEmail(username, email, token string) {
+	go func() {
+		subject := "Verify your Email for Skill Drill API"
+		body := fmt.Sprintf("Hi %s,\n\nPlease verify your email by using this token: %s", username, token)
+		if err := s.Mailer.SendEmail(email, subject, body); err != nil {
+			log.Printf("failed to send verification email to %s: %v", email, err)
+		}
+	}()
 }
 
 func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
@@ -111,12 +115,20 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*AuthRespons
 		return nil, errors.New("invalid email or password")
 	}
 
-	if !user.IsVerified {
-		return nil, errors.New("email not verified")
-	}
-
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, errors.New("invalid email or password")
+	}
+
+	if !user.IsVerified {
+		tokenStr := generateRandomToken()
+		user.VerificationToken = &tokenStr
+		if err := s.Repo.SaveUser(ctx, user); err != nil {
+			return nil, fmt.Errorf("failed to save verification token: %w", err)
+		}
+
+		s.sendVerificationEmail(user.Username, user.Email, tokenStr)
+
+		return nil, errors.New("email not verified, a new verification email has been sent")
 	}
 
 	token, err := s.generateToken(user.ID, user.Role)
