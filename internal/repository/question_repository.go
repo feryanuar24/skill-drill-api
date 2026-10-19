@@ -13,9 +13,9 @@ func (r *Repository) CreateQuestions(ctx context.Context, questions []models.Que
 	return r.db.WithContext(ctx).CreateInBatches(questions, 100).Error
 }
 
-func (r *Repository) FindQuestion(ctx context.Context, questionID, topicID uint) (*models.Question, error) {
+func (r *Repository) FindQuestion(ctx context.Context, questionID uint) (*models.Question, error) {
 	var question models.Question
-	err := r.db.WithContext(ctx).Where("id = ? AND topic_id = ?", questionID, topicID).First(&question).Error
+	err := r.db.WithContext(ctx).Where("id = ?", questionID).First(&question).Error
 	return &question, err
 }
 

@@ -17,18 +17,17 @@ type StudyService struct {
 
 type SubmitAnswerRequest struct {
 	UserID     uint   `json:"user_id" binding:"required,min=1"`
-	TopicID    uint   `json:"topic_id" binding:"required,min=1"`
 	QuestionID uint   `json:"question_id" binding:"required,min=1"`
 	Answer     string `json:"answer" binding:"required,oneof=A B C D a b c d"`
 }
 
-func (s *StudyService) Submit(ctx context.Context, userID, topicID, questionID uint, answer string) (bool, *models.User, error) {
+func (s *StudyService) Submit(ctx context.Context, userID, questionID uint, answer string) (bool, *models.User, error) {
 	answer = strings.ToUpper(strings.TrimSpace(answer))
 	if !strings.Contains("ABCD", answer) || len(answer) != 1 {
 		return false, nil, fmt.Errorf("answer must be A, B, C, or D")
 	}
 
-	question, err := s.Repo.FindQuestion(ctx, questionID, topicID)
+	question, err := s.Repo.FindQuestion(ctx, questionID)
 	if err != nil {
 		return false, nil, err
 	}
@@ -63,7 +62,7 @@ func (s *StudyService) Submit(ctx context.Context, userID, topicID, questionID u
 		return false, nil, err
 	}
 
-	session := &models.StudySession{UserID: userID, TopicID: topicID, Score: 0, IsCompleted: true}
+	session := &models.StudySession{UserID: userID, TopicID: question.TopicID, Score: 0, IsCompleted: true}
 	if answer == strings.ToUpper(question.CorrectAnswer) {
 		session.Score = 1
 	}

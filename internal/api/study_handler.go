@@ -16,7 +16,7 @@ func (h *Handler) Submit(c *gin.Context) {
 		return
 	}
 
-	correct, user, err := h.Study.Submit(c.Request.Context(), req.UserID, req.TopicID, req.QuestionID, req.Answer)
+	correct, user, err := h.Study.Submit(c.Request.Context(), req.UserID, req.QuestionID, req.Answer)
 	if err != nil {
 		log.Print(err)
 		SendError(c, http.StatusBadRequest, err.Error(), nil)

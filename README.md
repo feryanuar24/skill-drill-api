@@ -139,7 +139,6 @@ curl -X POST http://localhost:8080/api/study/submit \
 	-H 'Content-Type: application/json' \
 	-d '{
 		"user_id": 1,
-		"topic_id": 1,
 		"question_id": 1,
 		"answer": "A"
 	}'
@@ -148,7 +147,6 @@ curl -X POST http://localhost:8080/api/study/submit \
 | Field         | Tipe    | Wajib | Keterangan                    |
 | ------------- | ------- | ----- | ----------------------------- |
 | `user_id`     | integer | Ya    | ID user                       |
-| `topic_id`    | integer | Ya    | ID topic pertanyaan           |
 | `question_id` | integer | Ya    | ID question                   |
 | `answer`      | string  | Ya    | Hanya `A`, `B`, `C`, atau `D` |
 
