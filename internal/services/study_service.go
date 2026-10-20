@@ -16,7 +16,6 @@ type StudyService struct {
 }
 
 type SubmitAnswerRequest struct {
-	UserID     uint   `json:"user_id" binding:"required,min=1"`
 	QuestionID uint   `json:"question_id" binding:"required,min=1"`
 	Answer     string `json:"answer" binding:"required,oneof=A B C D a b c d"`
 }

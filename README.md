@@ -73,7 +73,7 @@ Response `200 OK`:
 }
 ```
 
-### `POST /api/admin/generate-questions`
+### `POST /api/questions/generate`
 
 Membuat pertanyaan pilihan ganda menggunakan LLM. Request harus memakai `multipart/form-data`. File PDF bersifat opsional.
 
@@ -89,7 +89,7 @@ Form fields:
 Tanpa PDF:
 
 ```bash
-curl -X POST http://localhost:8080/api/admin/generate-questions \
+curl -X POST http://localhost:8080/api/questions/generate \
 	-F topic_id=1 \
 	-F prompt_theme="Go concurrency" \
 	-F num_questions=5
@@ -98,7 +98,7 @@ curl -X POST http://localhost:8080/api/admin/generate-questions \
 Dengan PDF:
 
 ```bash
-curl -X POST http://localhost:8080/api/admin/generate-questions \
+curl -X POST http://localhost:8080/api/questions/generate \
 	-F topic_id=1 \
 	-F prompt_theme="AWS networking" \
 	-F num_questions=5 \
@@ -136,9 +136,9 @@ Request:
 
 ```bash
 curl -X POST http://localhost:8080/api/study/submit \
+	-H 'Authorization: Bearer <token>' \
 	-H 'Content-Type: application/json' \
 	-d '{
-		"user_id": 1,
 		"question_id": 1,
 		"answer": "A"
 	}'
@@ -146,7 +146,6 @@ curl -X POST http://localhost:8080/api/study/submit \
 
 | Field         | Tipe    | Wajib | Keterangan                    |
 | ------------- | ------- | ----- | ----------------------------- |
-| `user_id`     | integer | Ya    | ID user                       |
 | `question_id` | integer | Ya    | ID question                   |
 | `answer`      | string  | Ya    | Hanya `A`, `B`, `C`, atau `D` |
 
