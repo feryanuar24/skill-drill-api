@@ -16,19 +16,21 @@ type UserService struct {
 }
 
 type CreateUserRequest struct {
-	Username string  `json:"username" binding:"required,min=3,max=50"`
-	Email    string  `json:"email" binding:"required,email,max=255"`
-	Password string  `json:"password" binding:"required,password,max=100"`
-	Role     string  `json:"role,omitempty" binding:"omitempty,oneof=admin student"`
-	FCMToken *string `json:"fcm_token,omitempty" binding:"omitempty,max=500"`
+	Username   string  `json:"username" binding:"required,min=3,max=50"`
+	Email      string  `json:"email" binding:"required,email,max=255"`
+	Password   string  `json:"password" binding:"required,password,max=100"`
+	Role       string  `json:"role,omitempty" binding:"omitempty,oneof=admin student"`
+	IsVerified *bool   `json:"is_verified,omitempty"`
+	FCMToken   *string `json:"fcm_token,omitempty" binding:"omitempty,max=500"`
 }
 
 type UpdateUserRequest struct {
-	Username string  `json:"username" binding:"omitempty,min=3,max=50"`
-	Email    string  `json:"email" binding:"omitempty,email,max=255"`
-	Password string  `json:"password" binding:"omitempty,password,max=100"`
-	Role     string  `json:"role,omitempty" binding:"omitempty,oneof=admin student"`
-	FCMToken *string `json:"fcm_token,omitempty" binding:"omitempty,max=500"`
+	Username   string  `json:"username" binding:"omitempty,min=3,max=50"`
+	Email      string  `json:"email" binding:"omitempty,email,max=255"`
+	Password   string  `json:"password" binding:"omitempty,password,max=100"`
+	Role       string  `json:"role,omitempty" binding:"omitempty,oneof=admin student"`
+	IsVerified *bool   `json:"is_verified,omitempty"`
+	FCMToken   *string `json:"fcm_token,omitempty" binding:"omitempty,max=500"`
 }
 
 func (s *UserService) Create(ctx context.Context, req *CreateUserRequest) (*models.User, error) {
@@ -46,17 +48,23 @@ func (s *UserService) Create(ctx context.Context, req *CreateUserRequest) (*mode
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	role := req.Role
+	role := strings.ToLower(strings.TrimSpace(req.Role))
 	if role == "" {
 		role = models.RoleStudent
 	}
 
+	isVerified := false
+	if req.IsVerified != nil {
+		isVerified = *req.IsVerified
+	}
+
 	user := &models.User{
-		Username: req.Username,
-		Email:    req.Email,
-		Password: string(hashedPassword),
-		Role:     role,
-		FCMToken: req.FCMToken,
+		Username:   req.Username,
+		Email:      req.Email,
+		Password:   string(hashedPassword),
+		Role:       role,
+		IsVerified: isVerified,
+		FCMToken:   req.FCMToken,
 	}
 
 	if err := s.Repo.CreateUser(ctx, user); err != nil {
@@ -139,7 +147,10 @@ func (s *UserService) Update(ctx context.Context, id uint, req *UpdateUserReques
 		user.Password = string(hashedPassword)
 	}
 	if req.Role != "" {
-		user.Role = req.Role
+		user.Role = strings.ToLower(strings.TrimSpace(req.Role))
+	}
+	if req.IsVerified != nil {
+		user.IsVerified = *req.IsVerified
 	}
 	if req.FCMToken != nil {
 		user.FCMToken = req.FCMToken
