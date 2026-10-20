@@ -22,7 +22,7 @@ type QuestionService struct {
 type GenerateQuestionsRequest struct {
 	TopicID      uint   `form:"topic_id" binding:"required,min=1"`
 	NumQuestions int    `form:"num_questions" binding:"required,min=1,max=100"`
-	PromptTheme  string `form:"prompt_theme" binding:"required,min=2,max=255"`
+	PromptTheme  string `form:"prompt_theme" binding:"omitempty,max=255"`
 }
 
 func (s *QuestionService) Generate(ctx context.Context, topicID uint, theme string, count int, reader io.ReaderAt, size int64) ([]models.Question, error) {
@@ -30,36 +30,74 @@ func (s *QuestionService) Generate(ctx context.Context, topicID uint, theme stri
 		return nil, fmt.Errorf("num_questions must be between 1 and 100")
 	}
 
-	if strings.TrimSpace(theme) == "" {
-		return nil, fmt.Errorf("prompt_theme is required")
-	}
-
-	exists, err := s.Repo.TopicExists(ctx, topicID)
+	topic, err := s.Repo.GetTopicByID(ctx, topicID)
 	if err != nil {
-		return nil, err
-	}
-	if !exists {
 		return nil, fmt.Errorf("topic %d not found", topicID)
 	}
 
-	prompt := fmt.Sprintf("Anda adalah pembuat soal yang ahli. Buat %d soal pilihan ganda acak dengan tingkat kesulitan menengah hingga sulit tentang %s. Tulis seluruh isi soal, pilihan jawaban, dan penjelasan dalam bahasa Indonesia. Kembalikan HANYA array JSON yang valid dengan objek berisi question_text, option_a, option_b, option_c, option_d, correct_answer (A, B, atau C, atau D), dan explanation.", count, theme)
+	var promptBuilder strings.Builder
+	promptBuilder.WriteString("Anda adalah pembuat soal ujian yang ahli dan profesional.\n")
+	promptBuilder.WriteString(fmt.Sprintf("Buat %d soal pilihan ganda baru dengan materi utama topik: \"%s\".\n", count, topic.Name))
+
+	if strings.TrimSpace(topic.Description) != "" {
+		promptBuilder.WriteString(fmt.Sprintf("Deskripsi / ruang lingkup topik: %s\n", strings.TrimSpace(topic.Description)))
+	}
+
+	trimmedTheme := strings.TrimSpace(theme)
+	if trimmedTheme != "" {
+		promptBuilder.WriteString(fmt.Sprintf("Keterangan / petunjuk tambahan (tingkat kesulitan, pola/tipe soal, fokus materi): %s\n", trimmedTheme))
+	} else {
+		promptBuilder.WriteString("Tingkat kesulitan soal: menengah hingga sulit dengan analisis mendalam.\n")
+	}
+
+	// Fetch existing questions under this topic to maintain pattern consistency
+	existingQuestions, err := s.Repo.GetQuestions(ctx, topicID, "")
+	if err == nil && len(existingQuestions) > 0 {
+		promptBuilder.WriteString("\nPENTING: Pola, struktur pertanyaan, dan gaya bahasa soal yang dihasilkan HARUS KONSISTEN dengan pola soal yang sudah ada pada topik ini. Jadikan contoh soal berikut sebagai referensi pola:\n")
+		sampleCount := 3
+		if len(existingQuestions) < sampleCount {
+			sampleCount = len(existingQuestions)
+		}
+		for i := 0; i < sampleCount; i++ {
+			q := existingQuestions[i]
+			promptBuilder.WriteString(fmt.Sprintf("Contoh %d:\n- Pertanyaan: %s\n  A. %s\n  B. %s\n  C. %s\n  D. %s\n  Jawaban Benar: %s\n  Penjelasan: %s\n",
+				i+1, q.QuestionText, q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.CorrectAnswer, q.Explanation))
+		}
+	} else {
+		promptBuilder.WriteString("\nPastikan seluruh soal memiliki pola, gaya bahasa, dan kedalaman materi yang konsisten dan relevan untuk topik ini.\n")
+	}
+
 	if reader != nil {
 		text, err := pdfextractor.ExtractText(reader, size)
 		if err != nil {
 			return nil, err
 		}
 
-		prompt = fmt.Sprintf("Berdasarkan teks berikut, buat %d soal pilihan ganda tentang %s. Tulis seluruh isi soal, pilihan jawaban, dan penjelasan dalam bahasa Indonesia. Kembalikan HANYA array JSON yang valid dengan objek berisi question_text, option_a, option_b, option_c, option_d, correct_answer (A, B, atau C, atau D), dan explanation.\n\nTEKS:\n%s", count, theme, text)
+		promptBuilder.WriteString(fmt.Sprintf("\nGunakan juga teks dokumen berikut sebagai bahan acuan:\nTEKS:\n%s\n", text))
 	}
+
+	promptBuilder.WriteString("\nInstruksi Format dan Output:\n")
+	promptBuilder.WriteString("1. Tulis seluruh isi soal, pilihan jawaban (A, B, C, D), dan penjelasan dalam bahasa Indonesia.\n")
+	promptBuilder.WriteString("2. Kembalikan HANYA array JSON yang valid tanpa tanda markdown (seperti ```json) atau teks pengantar lainnya.\n")
+	promptBuilder.WriteString("3. Format objek JSON: [{\"question_text\": \"...\", \"option_a\": \"...\", \"option_b\": \"...\", \"option_c\": \"...\", \"option_d\": \"...\", \"correct_answer\": \"A/B/C/D\", \"explanation\": \"...\"}]\n")
+
+	prompt := promptBuilder.String()
 
 	response, err := s.LLM.Generate(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
 
+	cleaned := strings.TrimSpace(response)
+	if start := strings.Index(cleaned, "["); start != -1 {
+		if end := strings.LastIndex(cleaned, "]"); end != -1 && end >= start {
+			cleaned = cleaned[start : end+1]
+		}
+	}
+
 	var questions []models.Question
 
-	if err := json.Unmarshal([]byte(response), &questions); err != nil {
+	if err := json.Unmarshal([]byte(cleaned), &questions); err != nil {
 		return nil, fmt.Errorf("parse llm JSON array: %w", err)
 	}
 

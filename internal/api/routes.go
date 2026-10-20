@@ -32,8 +32,6 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	admin := protected.Group("")
 	admin.Use(middleware.RoleMiddleware(models.RoleAdmin))
 	{
-		admin.POST("/admin/generate-questions", genLimiter, h.GenerateQuestions)
-
 		// User routes
 		admin.POST("/users", h.CreateUser)
 		admin.GET("/users", h.GetUsers)
@@ -52,6 +50,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		admin.POST("/questions", h.CreateQuestion)
 		admin.PUT("/questions/:id", h.UpdateQuestion)
 		admin.DELETE("/questions/:id", h.DeleteQuestion)
+		admin.POST("/questions/generate", genLimiter, h.GenerateQuestions)
 	}
 
 	// Study routes (accessible by Student & Admin)
