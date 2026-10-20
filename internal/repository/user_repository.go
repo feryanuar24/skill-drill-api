@@ -2,9 +2,13 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"skill-drill-api/internal/models"
+
+	"gorm.io/gorm"
 )
 
 func (r *Repository) FindUser(ctx context.Context, userID uint) (*models.User, error) {
@@ -45,10 +49,75 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 	return r.db.WithContext(ctx).Create(user).Error
 }
 
-func (r *Repository) GetUsers(ctx context.Context) ([]models.User, error) {
+type UserFilter struct {
+	Search     string
+	Role       string
+	IsVerified *bool
+	SortBy     string
+	Order      string
+	Page       int
+	Limit      int
+}
+
+func (r *Repository) GetUsers(ctx context.Context, filter UserFilter) ([]models.User, models.Pagination, error) {
+	query := r.db.WithContext(ctx).Model(&models.User{})
+
+	if filter.Role != "" {
+		query = query.Where("role = ?", filter.Role)
+	}
+	if filter.IsVerified != nil {
+		query = query.Where("is_verified = ?", *filter.IsVerified)
+	}
+	if filter.Search != "" {
+		searchPattern := "%" + strings.ToLower(filter.Search) + "%"
+		query = query.Where("LOWER(username) LIKE ? OR LOWER(email) LIKE ?", searchPattern, searchPattern)
+	}
+
+	var totalItems int64
+	if err := query.Session(&gorm.Session{}).Count(&totalItems).Error; err != nil {
+		return nil, models.Pagination{}, err
+	}
+
+	sortBy := "created_at"
+	allowedSorts := map[string]string{
+		"id":             "id",
+		"username":       "username",
+		"email":          "email",
+		"role":           "role",
+		"is_verified":    "is_verified",
+		"current_streak": "current_streak",
+		"highest_streak": "highest_streak",
+		"created_at":     "created_at",
+	}
+	if col, ok := allowedSorts[strings.ToLower(filter.SortBy)]; ok {
+		sortBy = col
+	}
+
+	order := "desc"
+	if strings.ToLower(filter.Order) == "asc" {
+		order = "asc"
+	}
+
+	query = query.Order(fmt.Sprintf("%s %s", sortBy, order))
+
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
+	limit := filter.Limit
+
+	if limit > 0 {
+		offset := (page - 1) * limit
+		query = query.Offset(offset).Limit(limit)
+	}
+
 	var users []models.User
-	err := r.db.WithContext(ctx).Find(&users).Error
-	return users, err
+	if err := query.Find(&users).Error; err != nil {
+		return nil, models.Pagination{}, err
+	}
+
+	pagination := models.CalculatePagination(totalItems, page, limit)
+	return users, pagination, nil
 }
 
 func (r *Repository) GetUserByID(ctx context.Context, id uint) (*models.User, error) {

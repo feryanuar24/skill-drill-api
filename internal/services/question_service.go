@@ -51,7 +51,7 @@ func (s *QuestionService) Generate(ctx context.Context, topicID uint, theme stri
 	}
 
 	// Fetch existing questions under this topic to maintain pattern consistency
-	existingQuestions, err := s.Repo.GetQuestions(ctx, topicID, "")
+	existingQuestions, _, err := s.Repo.GetQuestions(ctx, repository.QuestionFilter{TopicID: topicID, Limit: 3, SortBy: "id", Order: "desc"})
 	if err == nil && len(existingQuestions) > 0 {
 		promptBuilder.WriteString("\nPENTING: Pola, struktur pertanyaan, dan gaya bahasa soal yang dihasilkan HARUS KONSISTEN dengan pola soal yang sudah ada pada topik ini. Jadikan contoh soal berikut sebagai referensi pola:\n")
 		sampleCount := 3
@@ -176,8 +176,56 @@ func (s *QuestionService) Create(ctx context.Context, req *CreateQuestionRequest
 	return s.Repo.GetQuestionByID(ctx, question.ID)
 }
 
-func (s *QuestionService) GetAll(ctx context.Context, topicID uint, search string) ([]models.Question, error) {
-	return s.Repo.GetQuestions(ctx, topicID, strings.TrimSpace(search))
+type GetQuestionsQuery struct {
+	Page          int    `form:"page"`
+	Limit         int    `form:"limit"`
+	TopicID       uint   `form:"topic_id"`
+	Search        string `form:"search"`
+	CorrectAnswer string `form:"correct_answer"`
+	SortBy        string `form:"sort_by"`
+	Order         string `form:"order"`
+	All           bool   `form:"all"`
+}
+
+func (s *QuestionService) GetAll(ctx context.Context, query *GetQuestionsQuery) ([]models.Question, *models.Pagination, error) {
+	if query == nil {
+		query = &GetQuestionsQuery{}
+	}
+
+	limit := query.Limit
+	if query.All {
+		limit = 0
+	} else if limit <= 0 {
+		limit = 10
+	} else if limit > 100 {
+		limit = 100
+	}
+
+	page := query.Page
+	if page < 1 {
+		page = 1
+	}
+
+	correct := strings.ToUpper(strings.TrimSpace(query.CorrectAnswer))
+	if correct != "" && !strings.Contains("ABCD", correct) {
+		correct = ""
+	}
+
+	filter := repository.QuestionFilter{
+		TopicID:       query.TopicID,
+		CorrectAnswer: correct,
+		Search:        strings.TrimSpace(query.Search),
+		SortBy:        strings.TrimSpace(query.SortBy),
+		Order:         strings.TrimSpace(query.Order),
+		Page:          page,
+		Limit:         limit,
+	}
+
+	questions, pagination, err := s.Repo.GetQuestions(ctx, filter)
+	if err != nil {
+		return nil, nil, err
+	}
+	return questions, &pagination, nil
 }
 
 func (s *QuestionService) GetByID(ctx context.Context, id uint) (*models.Question, error) {

@@ -40,8 +40,47 @@ func (s *TopicService) Create(ctx context.Context, req *CreateTopicRequest) (*mo
 	return topic, nil
 }
 
-func (s *TopicService) GetAll(ctx context.Context) ([]models.Topic, error) {
-	return s.Repo.GetTopics(ctx)
+type GetTopicsQuery struct {
+	Page   int    `form:"page"`
+	Limit  int    `form:"limit"`
+	Search string `form:"search"`
+	SortBy string `form:"sort_by"`
+	Order  string `form:"order"`
+	All    bool   `form:"all"`
+}
+
+func (s *TopicService) GetAll(ctx context.Context, query *GetTopicsQuery) ([]models.Topic, *models.Pagination, error) {
+	if query == nil {
+		query = &GetTopicsQuery{}
+	}
+
+	limit := query.Limit
+	if query.All {
+		limit = 0
+	} else if limit <= 0 {
+		limit = 10
+	} else if limit > 100 {
+		limit = 100
+	}
+
+	page := query.Page
+	if page < 1 {
+		page = 1
+	}
+
+	filter := repository.TopicFilter{
+		Search: strings.TrimSpace(query.Search),
+		SortBy: strings.TrimSpace(query.SortBy),
+		Order:  strings.TrimSpace(query.Order),
+		Page:   page,
+		Limit:  limit,
+	}
+
+	topics, pagination, err := s.Repo.GetTopics(ctx, filter)
+	if err != nil {
+		return nil, nil, err
+	}
+	return topics, &pagination, nil
 }
 
 func (s *TopicService) GetByID(ctx context.Context, id uint) (*models.Topic, error) {

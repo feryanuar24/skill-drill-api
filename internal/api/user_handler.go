@@ -24,12 +24,38 @@ func (h *Handler) CreateUser(c *gin.Context) {
 }
 
 func (h *Handler) GetUsers(c *gin.Context) {
-	users, err := h.Users.GetAll(c.Request.Context())
+	var query services.GetUsersQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		SendError(c, http.StatusBadRequest, "Invalid query parameters", FormatValidationError(err))
+		return
+	}
+
+	if query.Search == "" {
+		query.Search = c.Query("q")
+	}
+	if query.SortBy == "" {
+		query.SortBy = c.Query("sort")
+	}
+	if query.Order == "" {
+		query.Order = c.Query("order_by")
+	}
+	if query.Limit == 0 {
+		if val, err := strconv.Atoi(c.Query("per_page")); err == nil && val > 0 {
+			query.Limit = val
+		} else if val, err := strconv.Atoi(c.Query("page_size")); err == nil && val > 0 {
+			query.Limit = val
+		}
+	}
+	if !query.All && c.Query("all") == "true" {
+		query.All = true
+	}
+
+	users, pagination, err := h.Users.GetAll(c.Request.Context(), &query)
 	if err != nil {
 		SendError(c, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
-	SendSuccess(c, http.StatusOK, "Users retrieved successfully", users)
+	SendPaginatedSuccess(c, http.StatusOK, "Users retrieved successfully", users, pagination)
 }
 
 func (h *Handler) GetUserByID(c *gin.Context) {

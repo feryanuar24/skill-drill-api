@@ -30,20 +30,38 @@ func (h *Handler) CreateQuestion(c *gin.Context) {
 }
 
 func (h *Handler) GetQuestions(c *gin.Context) {
-	var topicID uint
-	if tIDStr := c.Query("topic_id"); tIDStr != "" {
-		if val, err := strconv.ParseUint(tIDStr, 10, 32); err == nil {
-			topicID = uint(val)
-		}
+	var query services.GetQuestionsQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		SendError(c, http.StatusBadRequest, "Invalid query parameters", FormatValidationError(err))
+		return
 	}
 
-	search := c.Query("search")
-	questions, err := h.Questions.GetAll(c.Request.Context(), topicID, search)
+	if query.Search == "" {
+		query.Search = c.Query("q")
+	}
+	if query.SortBy == "" {
+		query.SortBy = c.Query("sort")
+	}
+	if query.Order == "" {
+		query.Order = c.Query("order_by")
+	}
+	if query.Limit == 0 {
+		if val, err := strconv.Atoi(c.Query("per_page")); err == nil && val > 0 {
+			query.Limit = val
+		} else if val, err := strconv.Atoi(c.Query("page_size")); err == nil && val > 0 {
+			query.Limit = val
+		}
+	}
+	if !query.All && c.Query("all") == "true" {
+		query.All = true
+	}
+
+	questions, pagination, err := h.Questions.GetAll(c.Request.Context(), &query)
 	if err != nil {
 		SendError(c, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
-	SendSuccess(c, http.StatusOK, "Questions retrieved successfully", questions)
+	SendPaginatedSuccess(c, http.StatusOK, "Questions retrieved successfully", questions, pagination)
 }
 
 func (h *Handler) GetQuestionByID(c *gin.Context) {

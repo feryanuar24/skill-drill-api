@@ -24,12 +24,38 @@ func (h *Handler) CreateTopic(c *gin.Context) {
 }
 
 func (h *Handler) GetTopics(c *gin.Context) {
-	topics, err := h.Topics.GetAll(c.Request.Context())
+	var query services.GetTopicsQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		SendError(c, http.StatusBadRequest, "Invalid query parameters", FormatValidationError(err))
+		return
+	}
+
+	if query.Search == "" {
+		query.Search = c.Query("q")
+	}
+	if query.SortBy == "" {
+		query.SortBy = c.Query("sort")
+	}
+	if query.Order == "" {
+		query.Order = c.Query("order_by")
+	}
+	if query.Limit == 0 {
+		if val, err := strconv.Atoi(c.Query("per_page")); err == nil && val > 0 {
+			query.Limit = val
+		} else if val, err := strconv.Atoi(c.Query("page_size")); err == nil && val > 0 {
+			query.Limit = val
+		}
+	}
+	if !query.All && c.Query("all") == "true" {
+		query.All = true
+	}
+
+	topics, pagination, err := h.Topics.GetAll(c.Request.Context(), &query)
 	if err != nil {
 		SendError(c, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
-	SendSuccess(c, http.StatusOK, "Topics retrieved successfully", topics)
+	SendPaginatedSuccess(c, http.StatusOK, "Topics retrieved successfully", topics, pagination)
 }
 
 func (h *Handler) GetTopicByID(c *gin.Context) {

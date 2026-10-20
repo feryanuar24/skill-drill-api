@@ -65,8 +65,51 @@ func (s *UserService) Create(ctx context.Context, req *CreateUserRequest) (*mode
 	return user, nil
 }
 
-func (s *UserService) GetAll(ctx context.Context) ([]models.User, error) {
-	return s.Repo.GetUsers(ctx)
+type GetUsersQuery struct {
+	Page       int    `form:"page"`
+	Limit      int    `form:"limit"`
+	Search     string `form:"search"`
+	Role       string `form:"role"`
+	IsVerified *bool  `form:"is_verified"`
+	SortBy     string `form:"sort_by"`
+	Order      string `form:"order"`
+	All        bool   `form:"all"`
+}
+
+func (s *UserService) GetAll(ctx context.Context, query *GetUsersQuery) ([]models.User, *models.Pagination, error) {
+	if query == nil {
+		query = &GetUsersQuery{}
+	}
+
+	limit := query.Limit
+	if query.All {
+		limit = 0
+	} else if limit <= 0 {
+		limit = 10
+	} else if limit > 100 {
+		limit = 100
+	}
+
+	page := query.Page
+	if page < 1 {
+		page = 1
+	}
+
+	filter := repository.UserFilter{
+		Search:     strings.TrimSpace(query.Search),
+		Role:       strings.TrimSpace(query.Role),
+		IsVerified: query.IsVerified,
+		SortBy:     strings.TrimSpace(query.SortBy),
+		Order:      strings.TrimSpace(query.Order),
+		Page:       page,
+		Limit:      limit,
+	}
+
+	users, pagination, err := s.Repo.GetUsers(ctx, filter)
+	if err != nil {
+		return nil, nil, err
+	}
+	return users, &pagination, nil
 }
 
 func (s *UserService) GetByID(ctx context.Context, id uint) (*models.User, error) {
