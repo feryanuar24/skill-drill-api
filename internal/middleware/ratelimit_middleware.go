@@ -29,8 +29,8 @@ func getEnvInt(key string, fallback int) int {
 }
 
 func AuthRateLimiter() gin.HandlerFunc {
-	rpm := getEnvInt("RATE_LIMIT_AUTH_RPM", 10)
-	burst := getEnvInt("RATE_LIMIT_AUTH_BURST", 10)
+	rpm := 10
+	burst := 10
 
 	limit := rate.Limit(float64(rpm) / 60.0)
 
@@ -38,8 +38,8 @@ func AuthRateLimiter() gin.HandlerFunc {
 }
 
 func GenQuestionsRateLimiter() gin.HandlerFunc {
-	rpm := getEnvInt("RATE_LIMIT_GEN_RPM", 3)
-	burst := getEnvInt("RATE_LIMIT_GEN_BURST", 3)
+	rpm := 3
+	burst := 3
 
 	limit := rate.Limit(float64(rpm) / 60.0)
 

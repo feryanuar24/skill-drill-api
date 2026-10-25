@@ -89,7 +89,7 @@ func RecaptchaMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if minScoreStr := os.Getenv("RECAPTCHA_MIN_SCORE"); minScoreStr != "" {
+		if minScoreStr := "0.5"; minScoreStr != "" {
 			minScore, err := strconv.ParseFloat(minScoreStr, 64)
 			if err == nil {
 				if result.Score < minScore {
