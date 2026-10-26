@@ -43,9 +43,10 @@ func (r *Repository) GetTopics(ctx context.Context, filter TopicFilter) ([]model
 
 	sortBy := "created_at"
 	allowedSorts := map[string]string{
-		"id":         "id",
-		"name":       "name",
-		"created_at": "created_at",
+		"id":          "id",
+		"name":        "name",
+		"description": "description",
+		"created_at":  "created_at",
 	}
 	if col, ok := allowedSorts[strings.ToLower(filter.SortBy)]; ok {
 		sortBy = col

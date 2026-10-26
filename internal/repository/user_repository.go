@@ -62,7 +62,7 @@ type UserFilter struct {
 func (r *Repository) GetUsers(ctx context.Context, filter UserFilter) ([]models.User, models.Pagination, error) {
 	query := r.db.WithContext(ctx).Model(&models.User{})
 
-	if filter.Role != "" {
+	if filter.Role != "" && strings.ToLower(filter.Role) != "all" {
 		query = query.Where("role = ?", filter.Role)
 	}
 	if filter.IsVerified != nil {

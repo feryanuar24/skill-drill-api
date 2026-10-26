@@ -78,7 +78,7 @@ type GetUsersQuery struct {
 	Limit      int    `form:"limit"`
 	Search     string `form:"search"`
 	Role       string `form:"role"`
-	IsVerified *bool  `form:"is_verified"`
+	IsVerified *bool  `form:"-"`
 	SortBy     string `form:"sort_by"`
 	Order      string `form:"order"`
 	All        bool   `form:"all"`
@@ -103,9 +103,14 @@ func (s *UserService) GetAll(ctx context.Context, query *GetUsersQuery) ([]model
 		page = 1
 	}
 
+	role := strings.ToLower(strings.TrimSpace(query.Role))
+	if role == "all" {
+		role = ""
+	}
+
 	filter := repository.UserFilter{
 		Search:     strings.TrimSpace(query.Search),
-		Role:       strings.TrimSpace(query.Role),
+		Role:       role,
 		IsVerified: query.IsVerified,
 		SortBy:     strings.TrimSpace(query.SortBy),
 		Order:      strings.TrimSpace(query.Order),

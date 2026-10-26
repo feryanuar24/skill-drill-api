@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"skill-drill-api/internal/services"
 
@@ -28,6 +29,12 @@ func (h *Handler) GetUsers(c *gin.Context) {
 	if err := c.ShouldBindQuery(&query); err != nil {
 		SendError(c, http.StatusBadRequest, "Invalid query parameters", FormatValidationError(err))
 		return
+	}
+
+	if isVerStr := strings.TrimSpace(c.Query("is_verified")); isVerStr != "" && isVerStr != "all" {
+		if val, err := strconv.ParseBool(isVerStr); err == nil {
+			query.IsVerified = &val
+		}
 	}
 
 	if query.Search == "" {
