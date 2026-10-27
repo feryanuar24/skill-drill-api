@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -72,8 +73,36 @@ func main() {
 
 	// Start server
 	port := os.Getenv("PORT")
-	log.Printf("API listening on :%s", port)
-	if err := r.Run(":" + port); err != nil {
+	if port == "" {
+		port = "8080"
+	}
+	host := os.Getenv("HOST")
+	if host == "" {
+		host = "0.0.0.0"
+	}
+	addr := host + ":" + port
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r,
+	}
+
+	ln4, err := net.Listen("tcp4", addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("API listening on IPv4 %s (http://127.0.0.1:%s)", addr, port)
+
+	if host == "" || host == "0.0.0.0" {
+		if ln6, err := net.Listen("tcp6", "[::1]:"+port); err == nil {
+			log.Printf("API also listening on IPv6 [::1]:%s (http://localhost:%s)", port, port)
+			go func() {
+				_ = srv.Serve(ln6)
+			}()
+		}
+	}
+
+	if err := srv.Serve(ln4); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }
