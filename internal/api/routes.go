@@ -41,7 +41,6 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 
 		// Topic routes
 		admin.POST("/topics", h.CreateTopic)
-		admin.GET("/topics", h.GetTopics)
 		admin.GET("/topics/:id", h.GetTopicByID)
 		admin.PUT("/topics/:id", h.UpdateTopic)
 		admin.DELETE("/topics/:id", h.DeleteTopic)
@@ -57,6 +56,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	student := protected.Group("")
 	student.Use(middleware.RoleMiddleware(models.RoleStudent, models.RoleAdmin))
 	{
+		student.GET("/topics", h.GetTopics)
 		student.GET("/questions", h.GetQuestions)
 		student.GET("/questions/:id", h.GetQuestionByID)
 		student.POST("/study/submit", h.Submit)
